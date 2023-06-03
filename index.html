@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #212121;
+      color: #fff;
+      overflow-x: hidden; /* Prevent horizontal scrollbar */
+    }
+
+    h1 {
+      color: #fff;
+      text-align: center;
+    }
+
+    .container {
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden; /* Prevent vertical scrollbar */
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 5px;
+      color: #fff;
+    }
+
+    .form-group input[type="number"] {
+      width: 150px;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+
+    .form-group button {
+      padding: 12px 24px;
+      background-color: #4285f4;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    .form-group button:hover {
+      background-color: #3367d6;
+    }
+
+    #graph {
+      flex: 1;
+      width: 100%;
+      border: 1px solid #777;
+      position: relative;
+      margin-top: 20px;
+    }
+
+    #tooltip {
+      position: absolute;
+      background-color: #333;
+      color: #fff;
+      padding: 5px;
+      border-radius: 4px;
+      display: none;
+    }
+
+    #tooltip::after {
+      content: "";
+      position: absolute;
+      top: -8px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-width: 8px;
+      border-style: solid;
+      border-color: #333 transparent transparent transparent;
+    }
+
+    #screenshot-btn {
+      padding: 12px 24px;
+      background-color: #4285f4;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+      margin-top: 20px;
+    }
+
+    #screenshot-btn:hover {
+      background-color: #3367d6;
+    }
+
+    #difference {
+      color: #fff;
+      margin-top: 10px;
+      font-weight: bold;
+    }
+
+    .green-text {
+      color: #00ff00;
+    }
+
+    .red-text {
+      color: #ff0000;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Line Graph Generator</h1>
+    <div class="form-group">
+      <label for="datapoints">Number of Data Points:</label>
+      <input type="number" id="datapoints" min="1" value="10">
+      <button onclick="generateGraph()">Generate Graph</button>
+    </div>
+    <div id="graph"></div>
+    <div id="tooltip"></div>
+    <button id="screenshot-btn" onclick="takeScreenshot()">Take Screenshot</button>
+    <div id="difference"></div>
+  </div>
+
+  <script>
+    // Function to generate random numbers following a normal distribution
+    function generateNormalRandom(mean, stdDev) {
+      var u = 0, v = 0;
+      while (u === 0) u = Math.random(); // Converting [0,1) to (0,1)
+      while (v === 0) v = Math.random();
+
+      var num = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+
+      return num * stdDev + mean;
+    }
+
+    function generateGraph() {
+      var datapointsInput = document.getElementById("datapoints");
+      var datapoints = parseInt(datapointsInput.value);
+
+      var graphContainer = document.getElementById("graph");
+      graphContainer.innerHTML = "";
+
+      var values = [];
+      var mean = 50; // Mean of the normal distribution
+      var stdDev = 10; // Standard deviation of the normal distribution
+      for (var i = 0; i < datapoints; i++) {
+        values.push(Math.floor(generateNormalRandom(mean, stdDev)));
+      }
+
+      var max = Math.max(...values);
+      var midY = graphContainer.clientHeight / 2;
+
+      var stepX = Math.floor(graphContainer.clientWidth / (datapoints - 1));
+      var stepY = Math.floor(graphContainer.clientHeight / max);
+
+      var svgNS = "http://www.w3.org/2000/svg";
+      var svg = document.createElementNS(svgNS, "svg");
+      svg.setAttributeNS(null, "width", "100%");
+      svg.setAttributeNS(null, "height", "100%");
+
+      // Add middle line
+      var line = document.createElementNS(svgNS, "line");
+      line.setAttributeNS(null, "x1", 0);
+      line.setAttributeNS(null, "y1", midY);
+      line.setAttributeNS(null, "x2", graphContainer.clientWidth);
+      line.setAttributeNS(null, "y2", midY);
+      line.setAttributeNS(null, "stroke", "#777");
+      svg.appendChild(line);
+
+      var path = document.createElementNS(svgNS, "path");
+      var d = `M 0 ${graphContainer.clientHeight - values[0] * stepY}`;
+
+      for (var i = 1; i < values.length; i++) {
+        d += ` L ${i * stepX} ${graphContainer.clientHeight - values[i] * stepY}`;
+      }
+
+      path.setAttributeNS(null, "d", d);
+      path.setAttributeNS(null, "fill", "none");
+      path.setAttributeNS(null, "stroke", "#4285f4");
+
+      svg.appendChild(path);
+
+      for (var i = 0; i < values.length; i++) {
+        var circle = document.createElementNS(svgNS, "circle");
+        circle.setAttributeNS(null, "cx", i * stepX);
+        circle.setAttributeNS(null, "cy", graphContainer.clientHeight - values[i] * stepY);
+        circle.setAttributeNS(null, "r", "3");
+        circle.setAttributeNS(null, "fill", "#4285f4");
+        circle.setAttribute("data-value", values[i]);
+        circle.setAttribute("data-x", i);
+
+        svg.appendChild(circle);
+      }
+
+      graphContainer.appendChild(svg);
+
+      graphContainer.addEventListener("mousemove", function(event) {
+        var tooltip = document.getElementById("tooltip");
+        tooltip.style.left = event.pageX + 10 + "px";
+        tooltip.style.top = event.pageY + 10 + "px";
+
+        var xPosition = Math.floor(event.offsetX / stepX);
+
+        if (xPosition >= 0 && xPosition < values.length) {
+          var circle = graphContainer.querySelector(`circle[data-x="${xPosition}"]`);
+          var value = circle.getAttribute("data-value");
+          tooltip.innerHTML = `Value: ${value}`;
+          tooltip.style.display = "block";
+        } else {
+          tooltip.style.display = "none";
+        }
+      });
+
+      graphContainer.addEventListener("mouseout", function() {
+        var tooltip = document.getElementById("tooltip");
+        tooltip.style.display = "none";
+      });
+
+      // Calculate and display the difference between starting and ending endpoints
+      var startingEndpoint = values[0];
+      var endingEndpoint = values[values.length - 1];
+      var difference = endingEndpoint - startingEndpoint;
+      var differenceElement = document.getElementById("difference");
+      differenceElement.textContent = `Difference: ${difference}`;
+      differenceElement.classList.remove("green-text", "red-text");
+
+      if (difference > 0) {
+        differenceElement.classList.add("green-text");
+      } else if (difference < 0) {
+        differenceElement.classList.add("red-text");
+      }
+    }
+
+    function takeScreenshot() {
+      var graphContainer = document.getElementById("graph");
+
+      html2canvas(graphContainer).then(function(canvas) {
+        var link = document.createElement("a");
+        link.href = canvas.toDataURL();
+        link.download = "graph.png";
+        link.click();
+      });
+    }
+  </script>
+
+  <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+</body>
+</html>
